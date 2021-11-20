@@ -5,6 +5,30 @@ Fediverse-Bridge 项目主要目的是从其他地方自动转发至Misskey
 
 [ybw2016v/bilibili2notes](https://github.com/ybw2016v/bilibili2notes)
 
+进程守护:
+```
+cat <<'TEXT' > /etc/systemd/system/fediversebridge.service
+[Unit]
+Description=TG to misskey daemon
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Fediverse-Bridge
+ExecStart=/usr/bin/python3 -m main.py
+Restart=always
+TEXT
+```
+将`WorkingDirectory`修改为程序所在目录,
+在通过进程守护运行前请手动运行一次,设置配置文件!
+通过 systemctl start fediversebridge 启动
+systemctl enable fediversebridge 设置开机自起
+关闭 systemctl stop fediversebridge
+禁用开机自起: systemctl disable fediversebridge
+
 原README.md
 <details>
   <summary>cyborg-ubyvtsya/telegram-mastodon-bridge Readme.md</summary>
