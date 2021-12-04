@@ -24,10 +24,13 @@ TEXT
 ```
 将`WorkingDirectory`修改为程序所在目录,
 在通过进程守护运行前请手动运行一次,设置配置文件!
-通过 systemctl start fediversebridge 启动
-systemctl enable fediversebridge 设置开机自起
-关闭 systemctl stop fediversebridge
-禁用开机自起: systemctl disable fediversebridge
+通过 `systemctl start fediversebridge` 启动
+
+`systemctl enable fediversebridge` 设置开机自起
+
+关闭 `systemctl stop fediversebridge`
+
+禁用开机自起: `systemctl disable fediversebridge`
 
 原README.md
 <details>
