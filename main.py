@@ -59,8 +59,7 @@ if not os.path.isfile("credentials.py"):
 else:
     try:
         from credentials import *
-
-        logging.info("正常运行!")
+        logging.info("开始运行!")
     except ImportError:
         logging.fatal(
             "credentials配置文件出错,请删除重试")
@@ -159,6 +158,24 @@ def footer_image(message):
                 final_text = message.chat.title
                 return final_text
 
+def uploadfile(caption,filename, mimetype):
+    rmediajson = {"i": misskey_token}
+    files = {'file': (filename, open(filename, "rb"), mimetype)}
+    try:
+        trycount=0
+        mediapost = requests.post(misskey_instance+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
+    except:
+        trycount = trycount + 1
+        if trycount >= 3:
+            logging.info(f"服务器超时")
+        else:
+            mediapost = requests.post(misskey_instance+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
+    media_id_list=[]
+    media_id_list.append(json.loads(mediapost.text)["id"])
+    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility,
+                 "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
+    logging.info(f"上传成功")
+    return rjson
 
 '''
 #Posting
@@ -291,7 +308,21 @@ def get_video(message):
             status=caption, media_ids=media_id, visibility=mastodon_visibility)
         logging.info(f"Posted: {posted['uri']}")
 
+@bot.channel_post_handler(content_types=["audio"])
+def get_audio(message):
+    logging.info(f"New {message.content_type}")
+    caption = footer_image(message)
 
+    fileID = message.audio.file_id
+    logging.info(f"Audio ID {fileID}")
+
+    file_info = bot.get_file(fileID)
+    downloaded_file = bot.download_file(file_info.file_path)
+    with open("tmp_audio", "wb") as tmp_audio:
+        tmp_audio.write(downloaded_file)
+    rjson = uploadfile(caption, "tmp_audio", "audio/mp3")
+    posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
+    logging.info(f"发布帖子成功")
 '''
 Finally run tg polling
 '''
