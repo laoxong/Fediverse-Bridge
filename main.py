@@ -162,18 +162,14 @@ def uploadfile(caption,filename, mimetype):
     rmediajson = {"i": misskey_token}
     files = {'file': (filename, open(filename, "rb"), mimetype)}
     try:
-        trycount=0
         mediapost = requests.post(misskey_instance+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
     except:
-        trycount = trycount + 1
-        if trycount >= 3:
-            logging.info(f"服务器超时")
-        else:
-            mediapost = requests.post(misskey_instance+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
+        logging.info(f"上传失败")
+        break
     media_id_list=[]
     media_id_list.append(json.loads(mediapost.text)["id"])
     rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility,
-                 "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
+                "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
     logging.info(f"上传成功")
     return rjson
 
