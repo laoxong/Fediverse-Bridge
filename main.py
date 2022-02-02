@@ -1,22 +1,22 @@
 #!/bin/env python
 """
 |--------------------------------------------------------------|
-|                 Telegram to Mastodon bridge                  |
+|                 Telegram to Misskey bridge                   |
 |--------------------------------------------------------------|
 
 Telegram bot API documentation:
         https://pypi.org/project/pyTelegramBotAPI/
-Mastodon bot API documentation:
-    https://mastodonpy.readthedocs.io/en/stable/
 
 """
 import os
 import logging
 import time
 import telebot
-from mastodon import Mastodon
 import requests
 import json
+import asyncio
+import websockets
+import html2text
 
 '''
 Basic setup
@@ -55,7 +55,7 @@ Bots
 
 # Telegram
 # parse mode can be either HTML or MARKDOWN
-bot = telebot.TeleBot(telegram_token, parse_mode="HTML")
+bot = telebot.TeleBot(telegram_token, parse_mode="MARKDOWN")
 
 
 def ping_bots():
@@ -76,18 +76,20 @@ Functions
 
 
 def footer_text(message):
+    html_text = message.html_text
+    markdown = html2text.html2text(html_text)
     if message.forward_from_chat != None and message.chat.username != None:
-        final_text = message.text + "\r\rFrom " + message.chat.username + \
+        final_text = markdown + "\r\rFrom " + message.chat.username + \
                      f"\nForwarded from {message.forward_from_chat.title}"
     elif message.forward_from_chat != None and message.chat.username == None:
-        final_text = message.text + "\r\r" + message.chat.title + \
+        final_text = markdown + "\r\r" + message.chat.title + \
                      f"\nForwarded from {message.forward_from_chat.title}"
     elif message.chat.username != None:
-        final_text = message.text + "\r\rFrom " + message.chat.username
+        final_text = markdown + "\r\rFrom " + message.chat.username
     elif message.chat.username == None:
-        final_text = message.text + "\r\r" + message.chat.title
+        final_text = markdown + "\r\r" + message.chat.title
     else:
-        final_text = message.text
+        final_text = markdown
 
     if len(final_text) < character_limit:
         return final_text
@@ -99,7 +101,7 @@ def footer_image(message):
     if message.forward_from_chat != None:
         forward = f"\n转发自 {message.forward_from_chat.title}"
         try:
-            caption = message.json['caption']
+            caption = html2text.html2text(message.html_caption)
             if message.chat.username != None:
                 final_text = caption + "\r\r来自 " + message.chat.username + forward
                 return final_text
@@ -146,6 +148,7 @@ def uploadfile(caption,filename, mimetype):
                 "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
     logging.info(f"上传成功")
     return rjson
+
 
 '''
 #Posting
