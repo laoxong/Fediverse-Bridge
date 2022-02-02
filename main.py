@@ -15,7 +15,6 @@ import telebot
 import requests
 import json
 import asyncio
-import websockets
 import html2text
 
 '''
