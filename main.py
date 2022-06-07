@@ -35,7 +35,7 @@ if not os.path.isfile("credentials.py"):
         
     with open("credentials.py", "w") as creds:
         creds.write(
-            f"telegram_token = '{telegram_token}'\nmisskey_token = '{misskey_token}'\nweb_type= '{web_type}'\n"
+            f"telegram_token = '{telegram_token}'\nmisskey_token = '{misskey_token}'\n"
             f"misskey_instance = '{misskey_instance}'\nmisskey_visibility='{misskey_visibility}'\n"
             f"character_limit={character_limit}")
 
