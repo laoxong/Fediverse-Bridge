@@ -179,7 +179,8 @@ def get_image(message):
     with open("tmp_img", "wb") as tmp_image:
         tmp_image.write(downloaded_file)
     rmediajson = {"i": misskey_token}
-    files = {'file': ("tmp_img",open("tmp_img", "rb"),'image/png')}
+    timestamp = int(time.time())
+    files = {'file': ("Fediverse-Bridge-upload-img-"+str(timestamp),open("tmp_img", "rb"),'image/png')}
     mediapost = requests.post(misskey_instance+'/api/drive/files/create', data=rmediajson, files=files)
     media_id_list=[]
     media_id_list.append(json.loads(mediapost.text)["id"])
@@ -201,12 +202,12 @@ def get_video(message):
     with open("tmp_video", "wb") as tmp_video:
         tmp_video.write(downloaded_file)
     rmediajson = {"i": misskey_token}
-    files = {'file': ("tmp_video", open("tmp_video", "rb"))}
+    timestamp = int(time.time())
+    files = {'file': ("Fediverse-Bridge-upload-video-"+str(timestamp), open("tmp_video", "rb"))}
     mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files)
     media_id_list = []
     media_id_list.append(json.loads(mediapost.text)["id"])
-    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility,
-             "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
+    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
     logging.info(f"上传视频成功")
     posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
     logging.info(f"发布帖子成功")
@@ -221,9 +222,10 @@ def get_audio(message):
 
     file_info = bot.get_file(fileID)
     downloaded_file = bot.download_file(file_info.file_path)
-    with open("tmp_audio", "wb") as tmp_audio:
+    timestamp = int(time.time())
+    with open("Fediverse-Bridge-upload-audio-"+str(timestamp), "wb") as tmp_audio:
         tmp_audio.write(downloaded_file)
-    rjson = uploadfile(caption, "tmp_audio", "audio/mp3")
+    rjson = uploadfile(caption, "Fediverse-Bridge-upload-audio-"+str(timestamp), "audio/mp3")
     posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
     logging.info(f"发布帖子成功")
 '''
