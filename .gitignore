@@ -1,5 +1,6 @@
 /credentials.py
-/tmp_img
+/config.conf
+/tmp_*
 /.idea
 /__pycache
 /tmp_video

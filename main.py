@@ -10,11 +10,11 @@ Telegram bot API documentation:
 """
 import os
 import logging
+import sys
 import time
 import telebot
 import requests
 import json
-import asyncio
 import html2text
 
 '''
@@ -23,50 +23,65 @@ Basic setup
 logging.basicConfig(format='%(asctime)s: %(levelname)s %(name)s | %(message)s',
                     level=logging.INFO)
 logger = telebot.logger.setLevel(logging.INFO)
-
+bots = {}
 # check if credentials exist, create if not
-if not os.path.isfile("credentials.py"):
-    logging.info("No credentials found")
-    telegram_token = input("输入你的telegram bot token: ")
-    misskey_token = input("请输入Misskey bot token:")
-    misskey_instance = input("请输入Misskey实例地址(https://m.moec.top):")
-    misskey_visibility = input("帖子类型(public,home,followers)")
-    character_limit = input("字数限制:")
-        
-    with open("credentials.py", "w") as creds:
-        creds.write(
-            f"telegram_token = '{telegram_token}'\nmisskey_token = '{misskey_token}'\n"
-            f"misskey_instance = '{misskey_instance}'\nmisskey_visibility='{misskey_visibility}'\n"
-            f"character_limit={character_limit}")
+if not os.path.isfile("config.conf"):
+    if os.path.isfile("credentials.py"):
+        logging.info("转移旧的配置文件")
+        try:
+            from credentials import *
+            telegramchannelid = input("请输入你的Telegram频道ID:")
+            with open("config.conf", "w") as f:
+                f.write(telegram_token + "\n")
+                f.write(telegramchannelid + ",")
+                f.write(misskey_instance + ",")
+                f.write(misskey_token + ",")
+                f.write(misskey_visibility)                 
+        except ImportError:
+            logging.fatal(
+                "credentials配置文件出错,请删除")
+            exit(1)
 
+
+#判断启动参数
+if len(sys.argv) > 1:
+    if sys.argv[1] == "-add":
+        if os.path.isfile("config.conf"):
+            telegramchannelid = input("请输入你的Telegram频道ID:")
+            misskey_instance = input("请输入你的Misskey实例地址:")
+            misskey_token = input("请输入你的Misskey Token:")
+            misskey_visibility = input("请输入你的Misskey可见性:")
+            with open("config.conf", "a+") as f:
+                f.write("\n" + telegramchannelid + ",")
+                f.write(misskey_instance + ",")
+                f.write(misskey_token + ",")
+                f.write(misskey_visibility)
+        else:
+            telegram_token = input("请输入你的Telegram Token:")
+            telegramchannelid = input("请输入你的Telegram频道ID:")
+            misskey_instance = input("请输入你的Misskey实例地址(https://m.moec.top):")
+            misskey_token = input("请输入你的Misskey Token:")
+            misskey_visibility = input("请输入你的Misskey可见性:")
+            with open("config.conf", "w") as f:
+                f.write(telegram_token + "\n")
+                f.write(telegramchannelid + ",")
+                f.write(misskey_instance + ",")
+                f.write(misskey_token + ",")
+                f.write(misskey_visibility)
+        exit(0)
 else:
-    try:
-        from credentials import *
-        logging.info("开始运行!")
-    except ImportError:
-        logging.fatal(
-            "credentials配置文件出错,请删除重试")
-        exit(1)
-
-'''
-Bots
-'''
+    logging.info("读取配置文件")
+    with open("config.conf", "r") as f:
+        lines = f.readlines()
+        telegram_token = lines[0].strip('\n')
+        for i in lines[1:]:
+            i = i.strip('\n')
+            telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
+            bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]
 
 # Telegram
 # parse mode can be either HTML or MARKDOWN
 bot = telebot.TeleBot(telegram_token, parse_mode="MARKDOWN")
-
-
-def ping_bots():
-    try:
-        a = requests.get('https://api.telegram.org/')
-        if a.status_code != 200:
-            logging.info(f"无法连接至TG API服务器")
-        ping_telegram = bot.get_me()
-        logging.info(f"成功登入Telegram 机器人帐号 @{ping_telegram.username}")
-    except:
-        logging.fatal('无法验证 telegram token.')
-        exit(1)
 
 
 '''
@@ -90,7 +105,7 @@ def footer_text(message):
     else:
         final_text = markdown
 
-    if len(final_text) < character_limit:
+    if len(final_text) < 3000:
         return final_text
     else:
         pass
@@ -131,20 +146,15 @@ def footer_image(message):
                 final_text = message.chat.title
                 return final_text
 
-def uploadfile(caption,filename, mimetype):
-    rmediajson = {"i": misskey_token}
+def uploadfile(caption,filename, mimetype, id):
+    rmediajson = {"i": bots[id][1]}
     files = {'file': (filename, open(filename, "rb"), mimetype)}
-    i = 0
-    while i < 3:
-        try:
-            mediapost = requests.post(misskey_instance+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
-            i = 4
-        except:
-            logging.info(f"上传失败")
+    mediapost = requests.post(bots[id][0]+'/api/drive/files/create', timeout=10, data=rmediajson, files=files)
+    i = 4
     media_id_list=[]
     media_id_list.append(json.loads(mediapost.text)["id"])
-    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility,
-                "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
+    rjson = {'text': caption, "localOnly": False, "visibility": bots[id][2],
+                "fileIds": media_id_list, "viaMobile": False, "i": bots[id][1]}
     logging.info(f"上传成功")
     return rjson
 
@@ -159,87 +169,89 @@ def uploadfile(caption,filename, mimetype):
 
 @bot.channel_post_handler(content_types=["text"])
 def get_text(message):
-    logging.info(f"New {message.content_type}")
-    status_text = footer_text(message)
-    rjson = {'text': status_text, "localOnly": False, "visibility": misskey_visibility, "viaMobile": False,
-             "i": misskey_token}
-    notepost = requests.post(misskey_instance + "/api/notes/create", json=rjson)
-    logging.info(f"发布帖子成功")
+    if message.chat.id in bots:
+        logging.info(f"New {message.content_type}")
+        status_text = footer_text(message)
+        rjson = {'text': status_text, "localOnly": False, "visibility": bots[message.chat.id][2], "viaMobile": False,
+                "i": bots[message.chat.id][1]}
+        notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+        logging.info(f"发布帖子成功")
 
 @bot.channel_post_handler(content_types=["photo"])
 def get_image(message):
-    logging.info(f"New {message.content_type}")
-    caption = footer_image(message)
+    if message.chat.id in bots:
+        logging.info(f"New {message.content_type}")
+        caption = footer_image(message)
 
-    fileID = message.photo[-1].file_id
-    logging.info(f"Photo ID {fileID}")
+        fileID = message.photo[-1].file_id
+        logging.info(f"Photo ID {fileID}")
 
-    file_info = bot.get_file(fileID)
-    downloaded_file = bot.download_file(file_info.file_path)
-    with open("tmp_img", "wb") as tmp_image:
-        tmp_image.write(downloaded_file)
-    rmediajson = {"i": misskey_token}
-    timestamp = int(time.time())
-    files = {'file': ("Fediverse-Bridge-upload-img-"+str(timestamp),open("tmp_img", "rb"),'image/png')}
-    mediapost = requests.post(misskey_instance+'/api/drive/files/create', data=rmediajson, files=files)
-    media_id_list=[]
-    media_id_list.append(json.loads(mediapost.text)["id"])
-    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds":media_id_list, "viaMobile": False,  "i": misskey_token}
-    logging.info(f"上传图片成功")
-    posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
-    logging.info(f"发布帖子成功")
+        file_info = bot.get_file(fileID)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open("tmp_img", "wb") as tmp_image:
+            tmp_image.write(downloaded_file)
+        rmediajson = {"i": bots[message.chat.id][1]}
+        timestamp = int(time.time())
+        files = {'file': ("Fediverse-Bridge-upload-img-"+str(timestamp),open("tmp_img", "rb"),'image/png')}
+        mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files)
+        media_id_list=[]
+        media_id_list.append(json.loads(mediapost.text)["id"])
+        rjson = {'text': caption, "localOnly": False, "visibility": bots[message.chat.id][2], "fileIds":media_id_list, "viaMobile": False,  "i": bots[message.chat.id][1]}
+        logging.info(f"上传图片成功")
+        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+        logging.info(f"发布帖子成功")
 
 @bot.channel_post_handler(content_types=["video"])
 def get_video(message):
-    logging.info(f"New {message.content_type}")
-    caption = footer_image(message)
+    if message.chat.id in bots:
+        logging.info(f"New {message.content_type}")
+        caption = footer_image(message)
 
-    fileID = message.video.file_id
-    logging.info(f"Video ID {fileID}")
+        fileID = message.video.file_id
+        logging.info(f"Video ID {fileID}")
 
-    file_info = bot.get_file(fileID)
-    downloaded_file = bot.download_file(file_info.file_path)
-    with open("tmp_video", "wb") as tmp_video:
-        tmp_video.write(downloaded_file)
-    rmediajson = {"i": misskey_token}
-    timestamp = int(time.time())
-    files = {'file': ("Fediverse-Bridge-upload-video-"+str(timestamp), open("tmp_video", "rb"))}
-    mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files)
-    media_id_list = []
-    media_id_list.append(json.loads(mediapost.text)["id"])
-    rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
-    logging.info(f"上传视频成功")
-    posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
-    logging.info(f"发布帖子成功")
+        file_info = bot.get_file(fileID)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open("tmp_video", "wb") as tmp_video:
+            tmp_video.write(downloaded_file)
+        rmediajson = {"i": misskey_token}
+        timestamp = int(time.time())
+        files = {'file': ("Fediverse-Bridge-upload-video-"+str(timestamp), open("tmp_video", "rb"))}
+        mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files)
+        media_id_list = []
+        media_id_list.append(json.loads(mediapost.text)["id"])
+        rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
+        logging.info(f"上传视频成功")
+        posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
+        logging.info(f"发布帖子成功")
 
 @bot.channel_post_handler(content_types=["audio"])
 def get_audio(message):
-    logging.info(f"New {message.content_type}")
-    caption = footer_image(message)
+    if message.chat.id in bots:
+        logging.info(f"New {message.content_type}")
+        caption = footer_image(message)
+        timestamp = int(time.time())
 
-    fileID = message.audio.file_id
-    logging.info(f"Audio ID {fileID}")
+        fileID = message.audio.file_id
+        logging.info(f"Audio ID {fileID}")
 
-    file_info = bot.get_file(fileID)
-    downloaded_file = bot.download_file(file_info.file_path)
-    timestamp = int(time.time())
-    with open("Fediverse-Bridge-upload-audio-"+str(timestamp), "wb") as tmp_audio:
-        tmp_audio.write(downloaded_file)
-    rjson = uploadfile(caption, "Fediverse-Bridge-upload-audio-"+str(timestamp), "audio/mp3")
-    posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
-    logging.info(f"发布帖子成功")
+        file_info = bot.get_file(fileID)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open("Fediverse-Bridge-upload-audio-"+str(timestamp), "wb") as tmp_audio:
+            tmp_audio.write(downloaded_file)
+        rjson = uploadfile(caption, "Fediverse-Bridge-upload-audio-"+str(timestamp), "audio/mp3")
+        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+        logging.info(f"发布帖子成功")
 '''
 Finally run tg polling
 '''
 
 try:
-    ping_bots()
     bot.polling(interval=5)
 except KeyboardInterrupt:
     exit(0)
 except:
     logging.error("Something went wrong.")
-    ping_bots()
     bot.polling(interval=5)
 finally:
     print("\nBye!")
