@@ -41,7 +41,20 @@ if not os.path.isfile("config.conf"):
             logging.fatal(
                 "credentials配置文件出错,请删除")
             exit(1)
-
+    else:
+        telegram_token = input("请输入你的Telegram Token:")
+        telegramchannelid = input("请输入你的Telegram频道ID:")
+        misskey_instance = input("请输入你的Misskey实例地址(https://m.moec.top):")
+        misskey_token = input("请输入你的Misskey Token:")
+        misskey_visibility = input("请输入你的Misskey可见性:")
+        with open("config.conf", "w") as f:
+            f.write(telegram_token + "\n")
+            f.write(telegramchannelid + ",")
+            f.write(misskey_instance + ",")
+            f.write(misskey_token + ",")
+            f.write(misskey_visibility)
+            print("配置文件已生成,请重新运行")
+            exit(0)
 
 #判断启动参数
 if len(sys.argv) > 1:
