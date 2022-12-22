@@ -6,3 +6,5 @@
 /tmp_video
 /tmp_audio
 /__pycache__
+/venv
+/db.sqlite

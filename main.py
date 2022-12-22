@@ -13,16 +13,20 @@ import logging
 import sys
 import time
 import telebot
+from telebot import apihelper
 import requests
 import json
 import html2text
+import sqlite3
 
 '''
 Basic setup
 '''
+
 logging.basicConfig(format='%(asctime)s: %(levelname)s %(name)s | %(message)s',
                     level=logging.INFO)
-logger = telebot.logger.setLevel(logging.INFO)
+logger = telebot.logger.setLevel(logging.DEBUG)
+
 bots = {}
 # check if credentials exist, create if not
 if not os.path.isfile("config.conf"):
@@ -55,6 +59,19 @@ if not os.path.isfile("config.conf"):
             f.write(misskey_visibility)
             print("配置文件已生成,请重新运行")
             exit(0)
+if not os.path.isfile("db.sqlite"):
+    # 创建数据库
+    logging.info("创建数据库")
+    conn = sqlite3.connect('db.sqlite')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS `messages` (
+        `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        `channel_id`	INTEGER NOT NULL,
+        `message_id`	INTEGER NOT NULL,
+        `misskeynote_id`	TEXT NOT NULL
+    );''')
+    conn.commit()
+    conn.close()
 
 #判断启动参数
 if len(sys.argv) > 1:
@@ -94,7 +111,8 @@ else:
 
 # Telegram
 # parse mode can be either HTML or MARKDOWN
-bot = telebot.TeleBot(telegram_token, parse_mode="MARKDOWN")
+bot = telebot.TeleBot(telegram_token, parse_mode="MARKDOWN", )
+#apihelper.proxy = {'http':'http://127.0.0.1:2080'}
 
 
 '''
@@ -184,11 +202,26 @@ def uploadfile(caption,filename, mimetype, id):
 def get_text(message):
     if message.chat.id in bots:
         logging.info(f"New {message.content_type}")
+        conn = sqlite3.connect('db.sqlite')
         status_text = footer_text(message)
         rjson = {'text': status_text, "localOnly": False, "visibility": bots[message.chat.id][2], "viaMobile": False,
                 "i": bots[message.chat.id][1]}
-        notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-        logging.info(f"发布帖子成功")
+        if message.reply_to_message != None:
+            c = conn.cursor()
+            c.execute("SELECT * FROM messages WHERE message_id = (?)", (message.reply_to_message.message_id,))
+            data = c.fetchone()
+            if data != None:
+                rjson["replyId"] = data[3]
+                notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+                logging.info("发布帖子成功")
+        else:
+            notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+            logging.info("发布帖子成功")
+        c = conn.cursor()
+        c.execute("INSERT INTO messages('channel_id', 'message_id', 'misskeynote_id') VALUES (?, ?, ?)",(message.chat.id, message.message_id, json.loads(notepost.text)["createdNote"]["id"]))
+        conn.commit()
+        conn.close()
+        logging.info("发布帖子成功")
 
 @bot.channel_post_handler(content_types=["photo"])
 def get_image(message):
