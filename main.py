@@ -59,10 +59,10 @@ if not os.path.isfile("config.conf"):
             f.write(misskey_visibility)
             print("配置文件已生成,请重新运行")
             exit(0)
-if not os.path.isfile("db.sqlite"):
+if not os.path.isfile("messages.db"):
     # 创建数据库
     logging.info("创建数据库")
-    conn = sqlite3.connect('db.sqlite')
+    conn = sqlite3.connect('messages.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS `messages` (
         `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -202,7 +202,7 @@ def uploadfile(caption,filename, mimetype, id):
 def get_text(message):
     if message.chat.id in bots:
         logging.info(f"New {message.content_type}")
-        conn = sqlite3.connect('db.sqlite')
+        conn = sqlite3.connect('messages.db')
         status_text = footer_text(message)
         rjson = {'text': status_text, "localOnly": False, "visibility": bots[message.chat.id][2], "viaMobile": False,
                 "i": bots[message.chat.id][1]}
@@ -212,11 +212,8 @@ def get_text(message):
             data = c.fetchone()
             if data != None:
                 rjson["replyId"] = data[3]
-                notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-                logging.info("发布帖子成功")
-        else:
-            notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-            logging.info("发布帖子成功")
+        notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+        logging.info("发布帖子成功")
         c = conn.cursor()
         c.execute("INSERT INTO messages('channel_id', 'message_id', 'misskeynote_id') VALUES (?, ?, ?)",(message.chat.id, message.message_id, json.loads(notepost.text)["createdNote"]["id"]))
         conn.commit()
@@ -227,6 +224,7 @@ def get_text(message):
 def get_image(message):
     if message.chat.id in bots:
         logging.info(f"New {message.content_type}")
+        conn = sqlite3.connect('messages.db')
         caption = footer_image(message)
 
         fileID = message.photo[-1].file_id
@@ -239,13 +237,19 @@ def get_image(message):
         rmediajson = {"i": bots[message.chat.id][1]}
         timestamp = int(time.time())
         files = {'file': ("Fediverse-Bridge-upload-img-"+str(timestamp),open("tmp_img", "rb"),'image/png')}
-        mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files)
+        mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files, timeout=5)
         media_id_list=[]
         media_id_list.append(json.loads(mediapost.text)["id"])
         rjson = {'text': caption, "localOnly": False, "visibility": bots[message.chat.id][2], "fileIds":media_id_list, "viaMobile": False,  "i": bots[message.chat.id][1]}
-        logging.info(f"上传图片成功")
-        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-        logging.info(f"发布帖子成功")
+        logging.info("上传图片成功")
+        c = conn.cursor()
+        if message.reply_to_message != None:
+            c.execute("SELECT * FROM messages WHERE message_id = (?)", (message.reply_to_message.message_id,))
+            data = c.fetchone()
+            if data != None:
+                rjson["replyId"] = data[3]
+        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson, timeout=5)
+        logging.info("发布帖子成功")
 
 @bot.channel_post_handler(content_types=["video"])
 def get_video(message):
@@ -263,7 +267,7 @@ def get_video(message):
         rmediajson = {"i": misskey_token}
         timestamp = int(time.time())
         files = {'file': ("Fediverse-Bridge-upload-video-"+str(timestamp), open("tmp_video", "rb"))}
-        mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files)
+        mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files, timeout=5)
         media_id_list = []
         media_id_list.append(json.loads(mediapost.text)["id"])
         rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
@@ -286,8 +290,25 @@ def get_audio(message):
         with open("Fediverse-Bridge-upload-audio-"+str(timestamp), "wb") as tmp_audio:
             tmp_audio.write(downloaded_file)
         rjson = uploadfile(caption, "Fediverse-Bridge-upload-audio-"+str(timestamp), "audio/mp3")
-        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-        logging.info(f"发布帖子成功")
+        posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson, timeout=5)
+        logging.info("发布帖子成功")
+
+@bot.edited_channel_post_handler(content_types=["text"])
+def edit_post(message):
+    conn = sqlite3.connect("messages.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM messages WHERE message_id = (?)", (message.message_id,))
+    data = c.fetchone()
+    if data != None:
+        rjson = {"text": message.text, "i": bots[message.chat.id][1]}
+        deleted = requests.post(bots[message.chat.id][0] + "/api/notes/delete", json={"noteId": data[3], "i": bots[message.chat.id][1]})
+        logging.info("删除帖子")
+        newpost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
+        logging.info("修改帖子")
+        c.execute("UPDATE messages SET misskeynote_id = (?) WHERE id = (?)", (json.loads(newpost.text)["createdNote"]["id"], data[0]))
+        conn.commit()
+        conn.close()
+
 '''
 Finally run tg polling
 '''
