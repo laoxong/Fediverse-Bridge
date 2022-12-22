@@ -5,6 +5,21 @@ Fediverse-Bridge 项目主要目的是从其他地方自动转发至Misskey
 
 [ybw2016v/bilibili2notes](https://github.com/ybw2016v/bilibili2notes)
 
+配置文件(config.conf)格式:
+
+第一行TG机器人Token
+
+第二行起
+
+TG频道ID,Misskey实例地址,Misskey机器人API KEY,贴文类型
+
+如:
+
+```
+TG Bot Token
+频道1ID,https://m.moec.top,Bot1Key,public
+频道2ID,https://m.moec.top,Bot2Key,public
+```
 进程守护:
 ```
 cat <<'TEXT' > /etc/systemd/system/fediversebridge.service
