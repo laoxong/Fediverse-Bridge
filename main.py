@@ -13,7 +13,6 @@ import logging
 import sys
 import time
 import telebot
-from telebot import apihelper
 import requests
 import json
 import html2text
@@ -112,7 +111,6 @@ else:
 # Telegram
 # parse mode can be either HTML or MARKDOWN
 bot = telebot.TeleBot(telegram_token, parse_mode="MARKDOWN", )
-#apihelper.proxy = {'http':'http://127.0.0.1:2080'}
 
 
 '''
