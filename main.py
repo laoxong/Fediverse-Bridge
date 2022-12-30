@@ -24,7 +24,7 @@ Basic setup
 
 logging.basicConfig(format='%(asctime)s: %(levelname)s %(name)s | %(message)s',
                     level=logging.INFO)
-logger = telebot.logger.setLevel(logging.DEBUG)
+logger = telebot.logger.setLevel(logging.INFO)
 
 bots = {}
 # check if credentials exist, create if not
