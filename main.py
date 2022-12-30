@@ -211,12 +211,15 @@ def get_text(message):
             if data != None:
                 rjson["replyId"] = data[3]
         notepost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-        logging.info("发布帖子成功")
-        c = conn.cursor()
-        c.execute("INSERT INTO messages('channel_id', 'message_id', 'misskeynote_id') VALUES (?, ?, ?)",(message.chat.id, message.message_id, json.loads(notepost.text)["createdNote"]["id"]))
-        conn.commit()
-        conn.close()
-        logging.info("发布帖子成功")
+        if notepost.status_code == 200:
+            c = conn.cursor()
+            c.execute("INSERT INTO messages('channel_id', 'message_id', 'misskeynote_id') VALUES (?, ?, ?)",(message.chat.id, message.message_id, json.loads(notepost.text)["createdNote"]["id"]))
+            conn.commit()
+            conn.close()
+            logging.info("发布帖子%s成功", json.loads(notepost.text)["createdNote"]["id"])
+        else:
+            logging.info("发布帖子失败")
+            logging.info(notepost.text)
 
 @bot.channel_post_handler(content_types=["photo"])
 def get_image(message):
@@ -236,10 +239,15 @@ def get_image(message):
         timestamp = int(time.time())
         files = {'file': ("Fediverse-Bridge-upload-img-"+str(timestamp),open("tmp_img", "rb"),'image/png')}
         mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files, timeout=5)
+        if mediapost.status_code == 200:
+            logging.info("上传%s成功", json.loads(mediapost.text)["id"])
+        else:
+            logging.info("上传失败")
+            logging.info(mediapost.text)
+            return False
         media_id_list=[]
         media_id_list.append(json.loads(mediapost.text)["id"])
         rjson = {'text': caption, "localOnly": False, "visibility": bots[message.chat.id][2], "fileIds":media_id_list, "viaMobile": False,  "i": bots[message.chat.id][1]}
-        logging.info("上传图片成功")
         c = conn.cursor()
         if message.reply_to_message != None:
             c.execute("SELECT * FROM messages WHERE message_id = (?)", (message.reply_to_message.message_id,))
@@ -247,7 +255,11 @@ def get_image(message):
             if data != None:
                 rjson["replyId"] = data[3]
         posted = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson, timeout=5)
-        logging.info("发布帖子成功")
+        if posted.status_code == 200:
+            logging.info("发布帖子%s成功", json.loads(posted.text)["createdNote"]["id"])
+        else:
+            logging.info("发布帖子失败")
+            logging.info(posted.text)
 
 @bot.channel_post_handler(content_types=["video"])
 def get_video(message):
@@ -271,7 +283,8 @@ def get_video(message):
         rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
         logging.info(f"上传视频成功")
         posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
-        logging.info(f"发布帖子成功")
+        if posted.status_code == 200:
+            logging.info(f"发布帖子成功")
 
 @bot.channel_post_handler(content_types=["audio"])
 def get_audio(message):
@@ -300,13 +313,16 @@ def edit_post(message):
     if data != None:
         rjson = {"text": message.text, "i": bots[message.chat.id][1]}
         deleted = requests.post(bots[message.chat.id][0] + "/api/notes/delete", json={"noteId": data[3], "i": bots[message.chat.id][1]})
-        logging.info("删除帖子")
+        logging.info("删除帖子%s", data[3])
         newpost = requests.post(bots[message.chat.id][0] + "/api/notes/create", json=rjson)
-        logging.info("修改帖子")
-        c.execute("UPDATE messages SET misskeynote_id = (?) WHERE id = (?)", (json.loads(newpost.text)["createdNote"]["id"], data[0]))
-        conn.commit()
-        conn.close()
-
+        if newpost.status_code == 200:
+            logging.info("重新发布帖子%s成功", json.loads(newpost.text)["createdNote"]["id"])
+            c.execute("UPDATE messages SET misskeynote_id = (?) WHERE id = (?)", (json.loads(newpost.text)["createdNote"]["id"], data[0]))
+            conn.commit()
+            conn.close()
+        else:
+            logging.info("重新发布帖子失败")
+            logging.info(newpost.text)
 '''
 Finally run tg polling
 '''
