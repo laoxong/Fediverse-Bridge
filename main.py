@@ -265,6 +265,9 @@ def get_image(message):
 def get_video(message):
     if message.chat.id in bots:
         logging.info(f"New {message.content_type}")
+        conn = sqlite3.connect('messages.db')
+        c = conn.cursor()
+
         caption = footer_image(message)
 
         fileID = message.video.file_id
@@ -274,17 +277,31 @@ def get_video(message):
         downloaded_file = bot.download_file(file_info.file_path)
         with open("tmp_video", "wb") as tmp_video:
             tmp_video.write(downloaded_file)
-        rmediajson = {"i": misskey_token}
+        rmediajson = {"i": bots[message.chat.id][1]}
         timestamp = int(time.time())
         files = {'file': ("Fediverse-Bridge-upload-video-"+str(timestamp), open("tmp_video", "rb"))}
-        mediapost = requests.post(misskey_instance + '/api/drive/files/create', data=rmediajson, files=files, timeout=5)
+        if mediapost.status_code == 200:
+            logging.info("上传%s成功", json.loads(mediapost.text)["id"])
+        else:
+            logging.info("上传%s失败", json.loads(mediapost.text)["id"]))
+            logging.info(mediapost.text)
+            return False        
+        mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files, timeout=5)
         media_id_list = []
         media_id_list.append(json.loads(mediapost.text)["id"])
-        rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": misskey_token}
-        logging.info(f"上传视频成功")
-        posted = requests.post(misskey_instance + "/api/notes/create", json=rjson)
+        rjson = {'text': caption, "localOnly": False, "visibility": misskey_visibility, "fileIds": media_id_list, "viaMobile": False, "i": bots[message.chat.id][1]}
+        if message.reply_to_message != None:
+            c.execute("SELECT * FROM messages WHERE message_id = (?)", (message.reply_to_message.message_id,))
+            data = c.fetchone()
+            if data != None:
+                rjson["replyId"] = data[3]
+        posted = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', json=rjson)
         if posted.status_code == 200:
-            logging.info(f"发布帖子成功")
+        if posted.status_code == 200:
+            logging.info("发布帖子%s成功", json.loads(posted.text)["createdNote"]["id"])
+        else:
+            logging.info("发布帖子失败")
+            logging.info(posted.text)
 
 @bot.channel_post_handler(content_types=["audio"])
 def get_audio(message):
