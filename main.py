@@ -297,7 +297,6 @@ def get_video(message):
                 rjson["replyId"] = data[3]
         posted = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', json=rjson)
         if posted.status_code == 200:
-        if posted.status_code == 200:
             logging.info("发布帖子%s成功", json.loads(posted.text)["createdNote"]["id"])
         else:
             logging.info("发布帖子失败")
