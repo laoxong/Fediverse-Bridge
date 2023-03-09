@@ -283,7 +283,7 @@ def get_video(message):
         if mediapost.status_code == 200:
             logging.info("上传%s成功", json.loads(mediapost.text)["id"])
         else:
-            logging.info("上传%s失败", json.loads(mediapost.text)["id"]))
+            logging.info("上传%s失败", json.loads(mediapost.text)["id"])
             logging.info(mediapost.text)
             return False        
         mediapost = requests.post(bots[message.chat.id][0]+'/api/drive/files/create', data=rmediajson, files=files, timeout=5)
