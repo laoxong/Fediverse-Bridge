@@ -30,7 +30,7 @@ logger = telebot.logger.setLevel(logging.INFO)
 
 bots = {}
 # check if credentials exist, create if not
-if not os.path.isfile("config.conf"):
+if not os.path.isfile("config.conf") and "DOCKER_CONTAINER" not in os.environ:
     if os.path.isfile("credentials.py"):
         logging.info("转移旧的配置文件")
         try:
