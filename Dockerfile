@@ -2,6 +2,7 @@ FROM python:3.9-bullseye
 
 ENV telegramtoken="None"
 ENV misskeybot="None"
+ENV DOCKER_CONTAINER=true
 
 WORKDIR /app
 
