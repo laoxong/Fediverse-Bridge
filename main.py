@@ -100,7 +100,8 @@ if len(sys.argv) > 1:
                 f.write(misskey_token + ",")
                 f.write(misskey_visibility)
         exit(0)
-if len(sys.argv) < 2:
+
+if "DOCKER_CONTAINER" not in os.environ:
     logging.info("读取配置文件")
     with open("config.conf", "r") as f:
         lines = f.readlines()
@@ -110,9 +111,9 @@ if len(sys.argv) < 2:
             telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
             bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]
 else:
-    logging.info("从传入参数中读取配置")
-    telegram_token = sys.argv[1]
-    for i in sys.argv[2].split("&"):
+    logging.info("从环境变量中读取配置")
+    telegram_token = os.environ.get("telegramtoken","None")
+    for i in os.environ.get("misskeybot").split("&"):
         telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
         bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]       
 

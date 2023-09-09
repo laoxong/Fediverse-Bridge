@@ -1,12 +1,13 @@
 FROM python:3.9-bullseye
 
-ENV telegramtoken None
-ENV misskeybot None
+ENV telegramtoken="None"
+ENV misskeybot="None"
 
 WORKDIR /app
 
 COPY main.py .
+COPY requirements.txt ./
 
-RUN pip install pyTelegramBotAPI requests html2text
+RUN pip install -r requirements.txt
 
-CMD ["python", "main.py", "$telegramtoken", "$misskeybot"]
+CMD ["python", "main.py"]
