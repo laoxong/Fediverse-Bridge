@@ -9,4 +9,4 @@ COPY main.py .
 
 RUN pip install pyTelegramBotAPI requests html2text
 
-CMD ["python", "main.py", "${telegramtoken}", "${misskeybot}"]
+CMD ["python", "main.py", "$telegramtoken", "$misskeybot"]
