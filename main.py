@@ -110,12 +110,15 @@ if "DOCKER_CONTAINER" not in os.environ:
             i = i.strip('\n')
             telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
             bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]
+            logging.debug(bots)
 else:
     logging.info("从环境变量中读取配置")
     telegram_token = os.environ.get("telegramtoken")
     for i in os.environ.get("misskeybot").split("&"):
         telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
         bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]    
+        logging.debug(bots)
+
 
 # Telegram
 # parse mode can be either HTML or MARKDOWN
