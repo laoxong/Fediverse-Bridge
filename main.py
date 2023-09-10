@@ -115,7 +115,7 @@ else:
     telegram_token = os.environ.get("telegramtoken")
     for i in os.environ.get("misskeybot").split("&"):
         telegramchannelid, misskey_instance, misskey_token, misskey_visibility = i.split(",")
-        bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]       
+        bots[int(telegramchannelid)] = [str(misskey_instance), str(misskey_token), str(misskey_visibility)]    
 
 # Telegram
 # parse mode can be either HTML or MARKDOWN
@@ -196,6 +196,12 @@ def uploadfile(caption,filename, mimetype, id):
     logging.info(f"上传成功")
     return rjson
 
+def getinfo():
+    for id in bots:
+        channel_info = bot.get_chat(id)
+        data = requests.post(bots[id][0]+'/api/i', timeout=10,data={"i": bots[id][1]}).json()
+        logging.info(f"频道名称: {channel_info.title},ID:{channel_info.id}, MisskeyUserName:{data['username']}")
+        
 
 '''
 #Posting
