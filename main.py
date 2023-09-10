@@ -199,7 +199,7 @@ def uploadfile(caption,filename, mimetype, id):
     logging.info(f"上传成功")
     return rjson
 
-def getinfo():
+def getuserinfo():
     for id in bots:
         channel_info = bot.get_chat(id)
         data = requests.post(bots[id][0]+'/api/i', timeout=10,data={"i": bots[id][1]}).json()
@@ -363,6 +363,7 @@ Finally run tg polling
 '''
 
 try:
+    getuserinfo()
     bot.polling(interval=5)
 except KeyboardInterrupt:
     exit(0)
