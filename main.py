@@ -15,14 +15,13 @@ import time
 import telebot
 import requests
 import json
-import html2text
 import sqlite3
 
 '''
 Basic setup
 '''
 
-#PhraseMarkDown = True
+
 
 logging.basicConfig(format='%(asctime)s: %(levelname)s %(name)s | %(message)s',
                     level=logging.INFO)
@@ -131,20 +130,18 @@ Functions
 
 
 def footer_text(message):
-    html_text = message.html_text
-    markdown = html2text.html2text(html_text)
     if message.forward_from_chat != None and message.chat.username != None:
-        final_text = markdown + "\r\rFrom " + message.chat.username + \
+        final_text = message.text + "\r\rFrom " + message.chat.username + \
                      f"\nForwarded from {message.forward_from_chat.title}"
     elif message.forward_from_chat != None and message.chat.username == None:
-        final_text = markdown + "\r\r" + message.chat.title + \
+        final_text = message.text + "\r\r" + message.chat.title + \
                      f"\nForwarded from {message.forward_from_chat.title}"
     elif message.chat.username != None:
-        final_text = markdown + "\r\rFrom " + message.chat.username
+        final_text = message.text + "\r\rFrom " + message.chat.username
     elif message.chat.username == None:
-        final_text = markdown + "\r\r" + message.chat.title
+        final_text = message.text + "\r\r" + message.chat.title
     else:
-        final_text = markdown
+        final_text = message.text
 
     if len(final_text) < 3000:
         return final_text
@@ -156,7 +153,7 @@ def footer_image(message):
     if message.forward_from_chat != None:
         forward = f"\n转发自 {message.forward_from_chat.title}"
         try:
-            caption = html2text.html2text(message.html_caption)
+            caption = message.text
             if message.chat.username != None:
                 final_text = caption + "\r\r来自 " + message.chat.username + forward
                 return final_text
@@ -363,7 +360,6 @@ Finally run tg polling
 '''
 
 try:
-    getuserinfo()
     bot.polling(interval=5)
 except KeyboardInterrupt:
     exit(0)
