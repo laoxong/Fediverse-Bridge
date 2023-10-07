@@ -153,7 +153,7 @@ def footer_image(message):
     if message.forward_from_chat != None:
         forward = f"\n转发自 {message.forward_from_chat.title}"
         try:
-            caption = message.text
+            caption = message.json['caption']
             if message.chat.username != None:
                 final_text = caption + "\r\r来自 " + message.chat.username + forward
                 return final_text
@@ -195,13 +195,6 @@ def uploadfile(caption,filename, mimetype, id):
                 "fileIds": media_id_list, "viaMobile": False, "i": bots[id][1]}
     logging.info(f"上传成功")
     return rjson
-
-def getuserinfo():
-    for id in bots:
-        channel_info = bot.get_chat(id)
-        data = requests.post(bots[id][0]+'/api/i', timeout=10,data={"i": bots[id][1]}).json()
-        logging.info(f"频道名称: {channel_info.title},ID:{channel_info.id}, MisskeyUserName:{data['username']}")
-        
 
 '''
 #Posting
